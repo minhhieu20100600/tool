@@ -1,48 +1,78 @@
-(function runUniversalKeyTrigger() {
+// ==UserScript==
+// @name         tool gõ phím tự dộng
+// @namespace    http://tampermonkey.net/
+// @version      2.1.0
+// @description  Hỗ trợ gõ phím tự động cho trình duyệt.
+// @match        *://*/*
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    let isRunning = false;
+    let intervalId = null;
+
+    let currentRawKana = "";
+    let currentRomajiSequence = "";
+    let typedIndex = 0;
+
     const KANA_MAP = {
-        'きゃ':'kya','きゅ':'kyu','きょ':'kyo','しゃ':'si','しゅ':'su','しょ':'so',
-        'ちゃ':'ti','ちゅ':'tu','ちょ':'to','にゃ':'nya','にゅ':'nyu','にょ':'nyo',
-        'ひゃ':'hya','ひゅ':'hyu','ひょ':'hyo','みゃ':'mya','みゅ':'myu','みょ':'myo',
-        'りゃ':'rya','りゅ':'ryu','りょ':'ryo','ぎゃ':'gya','ぎゅ':'gyu','ぎょ':'gyo',
-        'じゃ':'zi','じゅ':'zu','じょ':'zo','びゃ':'bya','びゅ':'byu','びょ':'byo',
-        'ぴゃ':'pya','ぴゅ':'pyu','ぴょ':'pyo',
-        'キャ':'kya','キュ':'kyu','キョ':'kyo','シャ':'si','シュ':'su','ショ':'so',
-        'チャ':'ti','チュ':'tu','チョ':'to','ニャ':'nya','ニュ':'nyu','ニョ':'nyo',
-        'ヒャ':'hya','ヒュ':'hyu','ヒョ':'hyo','ミャ':'mya','ミュ':'myu','ミョ':'myo',
-        'リャ':'rya','リュ':'ryu','リョ':'ryo','ギャ':'gya','ギュ':'gyu','ギョ':'gyo',
-        'ジャ':'zi','ジュ':'zu','ジョ':'zo','ビャ':'bya','ビュ':'byu','ビョ':'byo',
-        'ピャ':'pya','ピュ':'pyu','ピョ':'pyo',
-        'あ':'a','い':'i','う':'u','え':'e','お':'o',
-        'か':'ka','き':'ki','く':'ku','け':'ke','こ':'ko',
-        'さ':'sa','し':'si','す':'su','せ':'se','そ':'so',
-        'た':'ta','ち':'ti','つ':'tu','て':'te','と':'to',
-        'な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no',
-        'は':'ha','ひ':'hi','ふ':'hu','へ':'he','ほ':'ho',
-        'ま':'ma','み':'mi','む':'mu','め':'me','も':'mo',
-        'や':'ya','ゆ':'yu','よ':'yo',
-        'ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro',
-        'わ':'wa','を':'wo','ん':'nn',
-        '가':'ga','ぎ':'gi','ぐ':'gu','げ':'ge','ご':'go',
-        'ざ':'za','じ':'zi','ず':'zu','ぜ':'ze','ぞ':'zo',
-        'だ':'da','ぢ':'di','づ':'du','で':'de','ど':'do',
-        'ば':'ba','び':'bi','ぶ':'bu','べ':'be','ぼ':'bo',
-        'ぱ':'pa','ぴ':'pi','ぷ':'pu','ぺ':'pe','ぽ':'po',
-        'ア':'a','イ':'i','ウ':'u','エ':'e','オ':'o',
-        'カ':'ka','キ':'ki','ク':'ku','ケ':'ke','コ':'ko',
-        'サ':'sa','シ':'si','ス':'su','セ':'se','ソ':'so',
-        'タ':'ta','チ':'ti','ツ':'tu','テ':'te','ト':'to',
-        'ナ':'na','ニ':'ni','ヌ':'nu','ネ':'ne','ノ':'no',
-        'ハ':'ha','ヒ':'hi','フ':'hu','ヘ':'he','ホ':'ho',
-        'マ':'ma','ミ':'mi','ム':'mu','メ':'me','モ':'mo',
-        'ヤ':'ya','ユ':'yu','ヨ':'yo',
-        'ラ':'ra','リ':'ri','ル':'ru','レ':'re','ロ':'ro',
-        'ワ':'wa','ヲ':'wo','ン':'nn',
-        'ガ':'ga','ギ':'gi','グ':'gu','ゲ':'ge','ゴ':'go',
-        'ザ':'za','ジ':'zi','ズ':'zu','ゼ':'ze','ぞ':'zo',
-        'ダ':'da','ヂ':'di','ヅ':'du','デ':'de','ド':'do',
-        'バ':'ba','ビ':'bi','ブ':'bu','ベ':'be','ボ':'bo',
-        'パ':'pa','ピ':'pi','ぷ':'pu','ぺ':'pe','ポ':'po',
-        'ー':'-'
+        'しゃ':'SHO','しゅ':'SHU','しょ':'SHO',
+        'ちゃ':'TYA','ちゅ':'TYU','ちょ':'TYO',
+        'じゃ':'JYA','じゅ':'JYU','じょ':'JYO',
+        'きゃ':'KYA','きゅ':'KYU','きょ':'KYO',
+        'にゃ':'NYA','にゅ':'NYU','にょ':'NYO',
+        'ひゃ':'HYA','ひゅ':'HYU','ひょ':'HYO',
+        'みゃ':'MYA','みゅ':'MYU','みょ':'MYO',
+        'りゃ':'RYA','りゅ':'RYU','りょ':'RYO',
+        'ぎゃ':'GYA','ぎゅ':'GYU','ぎょ':'GYO',
+        'びゃ':'BYA','びゅ':'BYU','びょ':'BYO',
+        'ぴゃ':'PYA','ぴゅ':'PYU','ぴょ':'PYO',
+
+        'シャ':'SHO','シュ':'SHU','ショ':'SHO',
+        'チャ':'TYA','チュ':'TYU','チョ':'TYO',
+        'ジャ':'JYA','ジュ':'JYU','ジョ':'JYO',
+        'キャ':'KYA','キュ':'KYU','キョ':'KYO',
+        'ニャ':'NYA','ニュ':'NYU','ニョ':'NYO',
+        'ヒャ':'HYA','ヒュ':'HYU','ヒョ':'HYO',
+        'ミャ':'MYA','ミュ':'MYU','ミョ':'MYO',
+        'リャ':'RYA','リュ':'RYU','リョ':'RYO',
+        'ギャ':'GYA','ギュ':'GYU','ギョ':'GYO',
+        'ビャ':'BYA','ビュ':'BYU','ビょ':'BYO',
+        'ピャ':'PYA','ピュ':'PYU','ピョ':'PYO',
+
+        'あ':'A','い':'I','う':'U','え':'E','お':'O',
+        'か':'KA','き':'KI','く':'KU','け':'KE','こ':'KO',
+        'さ':'SA','し':'SI','す':'SU','せ':'SE','そ':'SO',
+        'た':'TA','ち':'TI','つ':'TU','て':'TE','と':'TO',
+        'な':'NA','に':'NI','ぬ':'NU','ね':'NE','の':'NO',
+        'は':'HA','ひ':'HI','ふ':'HU','へ':'HE','ほ':'HO',
+        'ま':'MA','み':'MI','む':'MU','め':'ME','も':'MO',
+        'や':'YA','ゆ':'YU','よ':'YO',
+        'ら':'RA','り':'RI','る':'RU','れ':'RE','ろ':'RO',
+        'わ':'WA','を':'WO','ん':'NN',
+        'が':'GA','ぎ':'GI','ぐ':'GU','げ':'GE','ご':'GO',
+        'ざ':'ZA','じ':'ZI','ず':'ZU','ぜ':'ZE','ぞ':'ZO',
+        'だ':'DA','ぢ':'DI','づ':'DU','で':'DE','ど':'DO',
+        'ば':'BA','び':'BI','ぶ':'BU','べ':'BE','ぼ':'BO',
+        'ぱ':'PA','ぴ':'PI','ぷ':'PU','ぺ':'PE','ぽ':'PO',
+
+        'ア':'A','イ':'I','ウ':'U','エ':'E','オ':'O',
+        'カ':'KA','キ':'KI','ク':'KU','ケ':'KE','コ':'KO',
+        'サ':'SA','シ':'SI','ス':'SU','セ':'SE','ソ':'SO',
+        'タ':'TA','チ':'TI','ツ':'TU','テ':'TE','ト':'TO',
+        'ナ':'NA','ニ':'NI','ヌ':'NU','ネ':'NE','ノ':'NO',
+        'ハ':'HA','ヒ':'HI','フ':'HU','ヘ':'HE','ホ':'HO',
+        'マ':'MA','ミ':'MI','ム':'MU','メ':'ME','モ':'MO',
+        'ヤ':'YA','ユ':'YU','ヨ':'YO',
+        'ラ':'RA','リ':'RI','ル':'RU','レ':'RE','ロ':'RO',
+        'ワ':'WA','ヲ':'WO','ン':'NN',
+        'ガ':'GA','ギ':'GI','グ':'GU','ゲ':'GE','ゴ':'GO',
+        'ザ':'ZA','ジ':'ZI','ズ':'ZU','ゼ':'ZE','ゾ':'ZO',
+        'ダ':'DA','ヂ':'DI','ヅ':'DU','デ':'DE','ド':'DO',
+        'バ':'BA','ビ':'BI','ブ':'BU','ベ':'BE','ボ':'BO',
+        'パ':'PA','ピ':'PI','プ':'PU','ペ':'PE','ポ':'PO',
+        'ー':'-', '、':',', '。':'.'
     };
 
     function parseKanaToRomaji(kanaText) {
@@ -96,17 +126,15 @@
     }
 
     function handleKeyPress(e) {
-        if (!e.isTrusted) return;
+        if (!isRunning || !e.isTrusted) return;
 
         const key = e.key ? e.key.toLowerCase() : '';
         if (key === 'alt' || key === 'control' || key === 'shift' || key === 'f12') return;
 
-        // Tự động quét document chứa văn bản bài thi
         let targetDoc = null;
-        let sentenceContainer = document.getElementById('sentenceText');
         let kanaContainer = document.getElementById('kanaText');
 
-        if (sentenceContainer || kanaContainer) {
+        if (kanaContainer) {
             targetDoc = document;
         } else {
             const iframes = document.querySelectorAll('iframe');
@@ -114,9 +142,8 @@
                 try {
                     if (f.contentWindow && f.contentWindow.document) {
                         let doc = f.contentWindow.document;
-                        if (doc.getElementById('sentenceText') || doc.getElementById('kanaText')) {
+                        if (doc.getElementById('kanaText')) {
                             targetDoc = doc;
-                            sentenceContainer = doc.getElementById('sentenceText');
                             kanaContainer = doc.getElementById('kanaText');
                             break;
                         }
@@ -125,40 +152,32 @@
             }
         }
 
-        // Chưa vào bài thi -> Bỏ qua cho phím đi qua bình thường (ví dụ phím Space bắt đầu)
-        if (!targetDoc || (!sentenceContainer && !kanaContainer)) return;
+        if (!targetDoc || !kanaContainer) return;
 
-        let fullText = "";
-        if (sentenceContainer && sentenceContainer.textContent.trim().length > 0) {
-            fullText = sentenceContainer.textContent.trim().toUpperCase();
-        } else if (kanaContainer) {
-            fullText = parseKanaToRomaji(kanaContainer.textContent.trim());
+        const rawKana = kanaContainer.textContent.trim();
+        if (!rawKana) return;
+
+        if (rawKana !== currentRawKana) {
+            currentRawKana = rawKana;
+            currentRomajiSequence = parseKanaToRomaji(rawKana);
+            typedIndex = 0;
         }
 
-        if (!fullText || fullText.length === 0) return;
-
-        // Đã vào bài thi -> Chặn phím thực tế và bắn phím chuẩn vào
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
 
-        let enteredText = "";
-        if (sentenceContainer) {
-            const enteredSpans = sentenceContainer.querySelectorAll('span.entered');
-            enteredSpans.forEach(span => enteredText += span.textContent);
-        }
-
-        if (enteredText.length < fullText.length) {
-            const nextCorrectChar = fullText.charAt(enteredText.length);
-            dispatchKey(targetDoc, nextCorrectChar);
+        if (typedIndex < currentRomajiSequence.length) {
+            const nextKey = currentRomajiSequence.charAt(typedIndex);
+            dispatchKey(targetDoc, nextKey);
+            typedIndex++; // Dòng tăng chỉ số con trỏ - Bắt buộc phải có!
         }
     }
 
-    // Gắn sự kiện chặn phím trên Window chính
-    window.addEventListener('keydown', handleKeyPress, true);
+    function attachListeners() {
+        window.removeEventListener('keydown', handleKeyPress, true);
+        window.addEventListener('keydown', handleKeyPress, true);
 
-    // Lặp định kỳ để tự gắn vào tất cả iframe hiện có mà không sợ lỗi CORS
-    setInterval(() => {
         const iframes = document.querySelectorAll('iframe');
         iframes.forEach(f => {
             try {
@@ -168,7 +187,50 @@
                 }
             } catch(e) {}
         });
-    }, 500);
+    }
 
-    console.log("⚡ AUTO-TYPER CONSOLE SẴN SÀNG! Bạn cứ để Console ở 'top', dán 1 lần là xong.");
+    function removeListeners() {
+        window.removeEventListener('keydown', handleKeyPress, true);
+        const iframes = document.querySelectorAll('iframe');
+        iframes.forEach(f => {
+            try {
+                if (f.contentWindow && f.contentWindow.document) {
+                    f.contentWindow.removeEventListener('keydown', handleKeyPress, true);
+                }
+            } catch(e) {}
+        });
+    }
+
+    function startTool() {
+        if (isRunning) return;
+        isRunning = true;
+        currentRawKana = "";
+        typedIndex = 0;
+        attachListeners();
+
+        intervalId = setInterval(() => {
+            if (isRunning) attachListeners();
+        }, 500);
+    }
+
+    function stopTool() {
+        if (!isRunning) return;
+        isRunning = false;
+        if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+        }
+        removeListeners();
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.altKey && (e.key === 's' || e.key === 'S')) {
+            e.preventDefault();
+            startTool();
+        } else if (e.altKey && (e.key === 'x' || e.key === 'X')) {
+            e.preventDefault();
+            stopTool();
+        }
+    }, true);
+
 })();
