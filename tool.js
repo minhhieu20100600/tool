@@ -1,3 +1,11 @@
+// ==UserScript==
+// @name         tool gõ phím tự dộng
+// @namespace    http://tampermonkey.net/
+// @version      2.1.0
+// @description  Hỗ trợ gõ phím tự động cho trình duyệt.
+// @match        *://*/*
+// ==/UserScript==
+
 (function () {
   'use strict';
 
