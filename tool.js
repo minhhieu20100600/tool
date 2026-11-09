@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         tool gõ phím tự dộng
+// @name         tool gõ phím tự động
 // @namespace    http://tampermonkey.net/
-// @version      2.1.0
-// @description  Hỗ trợ gõ phím tự động cho trình duyệt.
+// @version      2.5.0
+// @description  Hỗ trợ gõ phím tự động cho trình duyệt (Quét trực tiếp Kana, đồng bộ tiến độ chuẩn).
 // @match        *://*/*
 // ==/UserScript==
 
@@ -87,7 +87,6 @@
           let nextRom = KANA_MAP[nextSub] || KANA_MAP[kanaText[i + 1]] || '';
           if (nextRom.length > 0) res += nextRom[0];
         }
-
         i++;
         continue;
       }
@@ -162,6 +161,7 @@
     const rawKana = kanaContainer.textContent.trim();
     if (!rawKana) return;
 
+    // Chỉ khi xuất hiện chuỗi Kana mới thì mới dịch và thiết lập lại con trỏ typedIndex
     if (rawKana !== currentRawKana) {
       currentRawKana = rawKana;
       currentRomajiSequence = parseKanaToRomaji(rawKana);
@@ -172,6 +172,7 @@
     e.stopPropagation();
     e.stopImmediatePropagation();
 
+    // Gõ ký tự tiếp theo theo thứ tự của chuỗi Romaji đã dịch từ Kana
     if (typedIndex < currentRomajiSequence.length) {
       const nextKey = currentRomajiSequence.charAt(typedIndex);
       dispatchKey(targetDoc, nextKey);
@@ -205,12 +206,10 @@
     });
   }
 
-  // Bắt đầu công cụ
+  // Bắt đầu công cụ (Không xóa currentRawKana/typedIndex để khi bật lại giữa câu gõ tiếp bình thường)
   function startTool() {
     if (isRunning) return;
     isRunning = true;
-    currentRawKana = "";
-    typedIndex = 0;
     attachListeners();
     intervalId = setInterval(() => {
       if (isRunning) attachListeners();
